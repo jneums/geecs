@@ -2,7 +2,7 @@
 name = "geecs"
 version = "0.1.0"
 description = "Ghost Engine ECS (GEECS)"
-repository = "https://github.com/Jesse989/geecs"
+repository = "https://github.com/jneums/geecs"
 keywords = [ "ecs", "game", "simulations", "ghost-engine" ]
 license = "MIT"
 
