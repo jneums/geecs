@@ -1,0 +1,13 @@
+[package]
+name = "geecs"
+version = "0.1.0"
+description = "Ghost Engine ECS (GEECS)"
+repository = ""
+keywords = [ "ecs", "game", "simulations", "ghost-engine" ]
+license = "MIT"
+
+[dependencies]
+base = "0.11.2"
+stable-hash-map = "0.0.1"
+vector = "0.4.1"
+test = "2.0.0"
