@@ -1,5 +1,7 @@
 # Ghost Engine ECS (GEECS)
 
+[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/geecs)](https://mops.one/geecs) [![documentation](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/documentation/geecs)](https://mops.one/geecs/docs)
+
 ## Overview
 
 GEECS is a simple Entity Component System (ECS) library for Motoko. It is designed to be simple to use and easy to integrate into your existing projects.
