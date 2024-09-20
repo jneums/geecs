@@ -2,7 +2,7 @@
 name = "geecs"
 version = "0.1.0"
 description = "Ghost Engine ECS (GEECS)"
-repository = ""
+repository = "https://github.com/Jesse989/geecs"
 keywords = [ "ecs", "game", "simulations", "ghost-engine" ]
 license = "MIT"
 
@@ -10,4 +10,9 @@ license = "MIT"
 base = "0.11.2"
 stable-hash-map = "0.0.1"
 vector = "0.4.1"
+
+[dev-dependencies]
 test = "2.0.0"
+
+[toolchain]
+moc = "0.13.0"
