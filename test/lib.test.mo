@@ -1,4 +1,4 @@
-import { test; suite; expect } "mo:test";
+import { test; suite; expect } "mo:test/async";
 
 import Time "mo:base/Time";
 import Text "mo:base/Text";
@@ -10,7 +10,7 @@ import ECS "../src";
 
 suite(
   "Ghost Engine ECS (GEECS)",
-  func() {
+  func() : async () {
 
     // Define a simple 3D vector type to represent positions and velocities:
     type Vector3 = {
@@ -43,6 +43,7 @@ suite(
       registeredSystems = ECS.State.SystemRegistry.new<Component>();
       systemsEntities = ECS.State.SystemsEntities.new();
       updatedComponents = ECS.State.UpdatedComponents.new<Component>();
+      entitiesToDelete = ECS.State.EntitiesToDelete.new();
 
       // Incrementing entity counter for ids.
       nextEntityId = func() : Nat {
@@ -63,9 +64,9 @@ suite(
     let movementArchetype = ["PositionComponent", "VelocityComponent"];
 
     // Test cases
-    test(
+    await test(
       "Can create and register a system",
-      func() {
+      func() : async () {
 
         // Check for registered systems
         expect.nat(Map.size(ctx.registeredSystems)).equal(0);
@@ -74,7 +75,7 @@ suite(
         let MovementSystem : ECS.Types.System<Component> = {
           systemType = "MovementSystem";
           archetype = movementArchetype;
-          update = func(ctx : ECS.Types.Context<Component>, entityId : Nat, deltaTime : Time.Time) : () {
+          update = func(ctx : ECS.Types.Context<Component>, entityId : Nat, _ : Time.Time) : async () {
             let position = ECS.World.getComponent<Component>(ctx, entityId, "PositionComponent");
             let velocity = ECS.World.getComponent<Component>(ctx, entityId, "VelocityComponent");
 
@@ -104,9 +105,9 @@ suite(
       },
     );
 
-    test(
+    await test(
       "Can add and remove components from entities",
-      func() {
+      func() : async () {
 
         // Create a new entity with a position and velocity component (movement archetype)
         let entityId = ECS.World.addEntity<Component>(ctx);
@@ -126,28 +127,33 @@ suite(
       },
     );
 
-    test(
+    await test(
       "Can view a list of updates for the current tick",
-      func() {
+      func() : async () {
         let updated = Vector.toArray(ctx.updatedComponents);
 
         let updates = [
           #Insert({
+            timestamp = Time.now();
             component = #PositionComponent({
               position = { x = 0; y = 0; z = 0 };
             });
             entityId = 1;
           }),
-          #Delete({ componentType = "PositionComponent"; entityId = 1 }),
+          #Delete({
+            componentType = "PositionComponent";
+            entityId = 1;
+            timestamp = Time.now();
+          }),
         ];
 
         assert (updated == updates);
       },
     );
 
-    test(
+    await test(
       "Can query entities by archetype",
-      func() {
+      func() : async () {
 
         // Check for any entities that have the requirements for the move system (movement archetype)
         let empty = ECS.World.getEntitiesByArchetype<Component>(ctx, movementArchetype);
@@ -167,9 +173,9 @@ suite(
       },
     );
 
-    test(
+    await test(
       "Can run the systems to update entities (game tick)",
-      func() {
+      func() : async () {
 
         // Check the entities position before updating
         let entityId = ECS.World.getEntitiesByArchetype<Component>(ctx, movementArchetype)[0];
@@ -178,10 +184,7 @@ suite(
         expect.option(component, showComponent, equalComponent).equal(?position);
 
         // Update the world, which will run all systems
-        let lastTick = 0;
-        let nextTick = ECS.World.update(ctx, 0);
-
-        expect.int(nextTick).notEqual(lastTick);
+        await ECS.World.update(ctx, 0);
 
         // Check the entities position after updating
         let updatedPosition = ECS.World.getComponent<Component>(ctx, entityId, "PositionComponent");
@@ -192,9 +195,9 @@ suite(
       },
     );
 
-    test(
+    await test(
       "Can empty the list of updates after a tick",
-      func() {
+      func() : async () {
         /// Clear the updatedComponents vector
         Vector.clear(ctx.updatedComponents);
 
@@ -202,6 +205,43 @@ suite(
         let updates = [];
 
         assert (updated == updates);
+      },
+    );
+
+    await test(
+      "Can delete an entity and its components",
+      func() : async () {
+        // Create a new entity with a position and velocity component
+        let entityId = ECS.World.addEntity<Component>(ctx);
+        let position = #PositionComponent({ position = { x = 0; y = 0; z = 0 } });
+        ECS.World.addComponent<Component>(ctx, entityId, "PositionComponent", position);
+
+        let velocity = #VelocityComponent({ velocity = { x = 1; y = 1; z = 1 } });
+        ECS.World.addComponent<Component>(ctx, entityId, "VelocityComponent", velocity);
+
+        // Ensure the entity and its components exist
+        let addedPosition = ECS.World.getComponent<Component>(ctx, entityId, "PositionComponent");
+        expect.option(addedPosition, showComponent, equalComponent).equal(?position);
+
+        let addedVelocity = ECS.World.getComponent<Component>(ctx, entityId, "VelocityComponent");
+        expect.option(addedVelocity, showComponent, equalComponent).equal(?velocity);
+
+        // Mark the entity for deletion
+        ECS.World.removeEntity<Component>(ctx, entityId);
+
+        // Run the update cycle to process deletions
+        await ECS.World.update(ctx, 0);
+
+        // Check that the entity and its components are removed
+        let removedPosition = ECS.World.getComponent<Component>(ctx, entityId, "PositionComponent");
+        expect.option(removedPosition, showComponent, equalComponent).equal(null);
+
+        let removedVelocity = ECS.World.getComponent<Component>(ctx, entityId, "VelocityComponent");
+        expect.option(removedVelocity, showComponent, equalComponent).equal(null);
+
+        // Ensure the entity is no longer in the list of entities
+        let entities = ECS.World.getEntitiesByArchetype<Component>(ctx, movementArchetype);
+        expect.array(entities, Nat.toText, Nat.equal).notContains(entityId);
       },
     );
 

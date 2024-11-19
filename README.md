@@ -10,10 +10,15 @@ You can use GEECS to create entities with components, and run systems that updat
 
 It was created as part of the Ghost Engine project, a simple game engine for the Internet Computer. Ghost Engine uses an authoritative server model, where the server runs the game simulation and sends updates to clients. GEECS is used to manage the game state and run the game simulation on the Internet Computer.
 
+### Online Demo
+
+There is a demo that uses GEECS to create a simple 3d ICRC1 token mining game.
+
+Check it out on Github [here](https://github.com/jneums/ghost-engine), or play it on the Internet Computer [here](https://yjprz-siaaa-aaaai-qpkaq-cai.icp0.io/).
 
 ## Usage
 
-## Install with mops
+### Install with mops
 
 You can install GEECS using the mops package manager. To install GEECS, run the following command:
 
@@ -21,8 +26,7 @@ You can install GEECS using the mops package manager. To install GEECS, run the 
 mops add geecs
 ```
 
-
-## Full Example
+### Full Example
 
 Here is a full example of how to use GEECS to create a simple 3D movement system. In this example, we define a simple 3D vector type to represent positions and velocities, and create components for positions and velocities. We then create a system that moves entities that have both a position and velocity component.
 
@@ -30,7 +34,7 @@ Check out the [tests](./test/lib.test.mo) to see an example of how to use GEECS.
 
 ```motoko
 // main.mo
-import ECS "mo:ecs";
+import ECS "mo:geecs";
 
 // Define a simple 3D vector type to represent positions and velocities:
 type Vector3 = {
@@ -63,6 +67,7 @@ let ctx : ECS.Types.Context<Component> = {
   registeredSystems = ECS.State.SystemRegistry.new<Component>();
   systemsEntities = ECS.State.SystemsEntities.new();
   updatedComponents = ECS.State.UpdatedComponents.new<Component>();
+  entitiesToDelete = ECS.State.EntitiesToDelete.new();
 
   // Incrementing entity counter for ids.
   nextEntityId = func() : Nat {
@@ -76,7 +81,7 @@ let movementArchetype = ["PositionComponent", "VelocityComponent"];
 let MovementSystem : ECS.Types.System<Component> = {
   systemType = "MovementSystem";
   archetype = movementArchetype;
-  update = func(ctx : ECS.Types.Context<Component>, entityId : Nat, deltaTime : Time.Time) : () {
+  update = func(ctx : ECS.Types.Context<Component>, entityId : Nat, deltaTime : Time.Time) : async () {
     let position = ECS.World.getComponent<Component>(ctx, entityId, "PositionComponent");
     let velocity = ECS.World.getComponent<Component>(ctx, entityId, "VelocityComponent");
 
@@ -108,37 +113,39 @@ ECS.World.addComponent<Component>(ctx, entityId, "PositionComponent", position);
 let velocity = #VelocityComponent({ velocity = { x = 1; y = 1; z = 1 } });
 ECS.World.addComponent<Component>(ctx, entityId, "VelocityComponent", velocity);
 
-// Run the ECS systems and provide a delta time:
-let lastTick = Time.now();
-lastTick := ECS.World.update(ctx, lastTick);
+// Process all systems and save delta time
+let thisTick = Time.now();
+let deltaTime = thisTick - lastTick;
+await ECS.World.update(ctx, deltaTime);
+lastTick := thisTick;
 ```
 
 Updates will be stored in the updatedComponents field of the context, and can be used to sync with clients or other systems.
 
-## Game Loop:
+### Game Loop:
 
 Here is an example of how to create a game loop that runs the simulation and sends updates to clients:
 
 ```motoko
 // Game loop runs all the systems
 func gameLoop() : async () {
-  // Process all the systems
-  lastTick := ECS.World.update(ctx, lastTick);
+  // Process all systems and save delta time
+  let thisTick = Time.now();
+  let deltaTime = thisTick - lastTick;
+  await ECS.World.update(ctx, deltaTime);
+  lastTick := thisTick;
 
-  // Iterate through the players and send them the updates
-  let updates = #Updates(Vector.toArray(updatedComponents));
+  // Remove all updates older than 5 seconds
+  let fiveSecondsAgo = thisTick - 30 * 1_000_000_000;
+  let updated = Updates.filterByTimestamp(ctx.updatedComponents, fiveSecondsAgo);
+  Vector.clear(ctx.updatedComponents);
 
-  if (Vector.size(updatedComponents) < 1) return;
-
-  for ((client, lastUpdate) in Map.entries(clients)) {
-    ignore Messages.Client.send(ctx, client, updates);
+  for (update in Vector.vals(updated)) {
+    Vector.add(ctx.updatedComponents, update);
   };
-
-  // Clear the updatedComponents vector
-  Vector.clear(updatedComponents);
 };
 
-// Set the game loop to run at an optimistic 60fps even though it will cap at the current block rate which is closer to 1-2fps:
+// Will tick every block
 let gameTick = #nanoseconds(1_000_000_000 / 60);
 ignore Timer.recurringTimer<system>(gameTick, gameLoop);
 ```

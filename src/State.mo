@@ -1,6 +1,7 @@
 import T "./Types";
 import Map "mo:stable-hash-map";
 import Vector "mo:vector";
+import Time "mo:base/Time";
 
 module {
   func initialEntities<T>() : T.Entities<T> {
@@ -9,6 +10,14 @@ module {
 
   public let Entities = {
     new = initialEntities;
+  };
+
+  func initialEntitiesToDelete() : T.EntitiesToDelete {
+    Map.new<T.EntityId, Time.Time>(Map.nhash);
+  };
+
+  public let EntitiesToDelete = {
+    new = initialEntitiesToDelete;
   };
 
   func initialSystemsEntities() : T.SystemsEntities {

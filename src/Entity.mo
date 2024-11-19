@@ -1,8 +1,5 @@
 import T "Types";
 import Map "mo:stable-hash-map/Map/Map";
-import Array "mo:base/Array";
-import Option "mo:base/Option";
-import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 
 module : T.Entity {
@@ -23,7 +20,6 @@ module : T.Entity {
   };
 
   public func hasAll<T>(components : T.Components<T>, componentTypes : [T.ComponentType]) : Bool {
-    /// Check if all component types are present in the components map
     for (componentType in Iter.fromArray(componentTypes)) {
       if (not Map.has(components, Map.thash, componentType)) {
         return false;

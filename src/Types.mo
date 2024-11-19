@@ -8,6 +8,7 @@ module {
 
   public type Context<T> = {
     entities : Entities<T>;
+    entitiesToDelete : EntitiesToDelete;
     systemsEntities : SystemsEntities;
     registeredSystems : SystemRegistry<T>;
     updatedComponents : UpdatedComponents<T>;
@@ -15,6 +16,7 @@ module {
   };
 
   public type Entities<T> = Map.Map<EntityId, Components<T>>;
+  public type EntitiesToDelete = Map.Map<EntityId, Time.Time>;
   public type SystemsEntities = Map.Map<SystemType, [EntityId]>;
   public type SystemRegistry<T> = Map.Map<SystemType, System<T>>;
   public type UpdatedComponents<T> = Vector.Vector<Update<T>>;
@@ -22,10 +24,12 @@ module {
 
   public type Update<T> = {
     #Insert : {
+      timestamp : Time.Time;
       entityId : EntityId;
       component : T;
     };
     #Delete : {
+      timestamp : Time.Time;
       entityId : EntityId;
       componentType : ComponentType;
     };
@@ -35,7 +39,7 @@ module {
   public type System<T> = {
     systemType : SystemType;
     archetype : [ComponentType];
-    update : (Context<T>, EntityId, Time.Time) -> ();
+    update : (Context<T>, EntityId, Time.Time) -> async ();
   };
 
   public type World = module {
@@ -51,7 +55,7 @@ module {
     removeComponent : <T>(Context<T>, EntityId, ComponentType) -> ();
     // System API
     addSystem : <T>(Context<T>, System<T>) -> ();
-    update : <T>(Context<T>, Time.Time) -> Time.Time;
+    update : <T>(Context<T>, Time.Time) -> async ();
   };
 
   public type Entity = module {
